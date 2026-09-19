@@ -1,16 +1,58 @@
 # Solution Research Dev
 
-An Agent Skill for Claude that refuses to write your code.
+An Agent Skill for Claude that hands you the tools instead of the answer.
 
 It takes a bug, an error or a feature you don't know how to build, researches the
 current best practices, and hands you back **2-4 labelled options (A, B, C)** with what
 each one takes to implement, why it makes sense architecturally, and where it hurts.
 It does not tell you which one to pick. When you pick one, it walks you through the
 implementation step by step — dependencies, classes, responsibilities, method
-signatures, common mistakes, how to verify it works — but the code stays yours to write.
+signatures, common mistakes, how to verify it works — and the code stays yours to write,
+unless you explicitly ask it to write it.
 
-Available in [English](skills/solution-research-dev/SKILL.md) and
-[Italian](skills/ricerca-soluzioni-dev/SKILL.md).
+**English only.** Earlier versions shipped an Italian copy alongside; the skill now
+answers in whatever language you write in, so a second copy was just two files to keep
+in sync. Write to it in Italian and it replies in Italian.
+
+## What this is for
+
+The point is not to be a pair of hands typing what the AI dictates. The point is to
+understand how to build the thing. The workflow the skill is designed around:
+
+1. **Do your own homework first.** Read up, work out what you actually need to build and
+   what the hard parts are. Come in with a problem you understand, not one you've
+   outsourced.
+2. **Ask the skill what the possible approaches are.** This is what it's good at: laying
+   out the real alternatives with their trade-offs, including the ones you didn't know
+   existed.
+3. **Make the architectural call yourself.** The choice depends on your project, your
+   constraints, your team — things you know and the model doesn't. Don't delegate it.
+   The skill deliberately won't make it for you.
+4. **Then decide who writes the code.** By hand if you want to learn the thing down to
+   the details. By the AI if you're short on time, or you're senior enough that writing
+   it teaches you nothing — in which case you ask, and it writes it (Phase 3).
+
+Step 4 is a real choice, not a failure. What's not a choice is skipping steps 1 and 3.
+
+## What changed in this version
+
+The skill used to have two phases and a hard line against ever writing code. It now has
+three:
+
+- **Phase 3 exists.** Ask explicitly — "write it for me", "I'm in a rush, give me the
+  finished code" — and it writes complete, working code for the option you chose, with
+  the key points commented and the common mistakes still flagged. No lecture, no
+  push-back ritual: you asked for it knowingly.
+- **Rule 2 is now a default, not an absolute.** "Don't write the implementation code" is
+  how it behaves in Phases 1 and 2; Phase 3 is a separate mode you turn on, not an
+  exception you have to argue for.
+- **Rule 1 did not move.** Asking for the code is fine. Asking it to make the
+  architectural choice for you is still refused — briefly, without moralising, and it
+  compensates with a sharper read on which trade-off dominates in your case. You still
+  decide.
+- **The framing is explicit about tools.** The job is to name the APIs, methods, classes,
+  annotations, security patterns and optimization techniques you may not know exist in
+  your stack — a kind of documentation cut to your specific problem.
 
 ## Why I built this
 
@@ -42,34 +84,26 @@ of that part only — not of everything.
 Same start as Case C: break it down, get the options, choose. But then I do the deep
 dive and write the code myself.
 
-This skill is the formalisation of the first half of C and all of D. That first half is
-the part I kept doing badly by hand: I'd ask "how do I do X?", get one confident answer,
-implement it, and never find out that there were three other ways and that mine was the
-wrong one for my constraints. Comparing real alternatives is where the learning is —
-that's the part I wanted turned into a repeatable process instead of a good day.
+This skill is Case C and Case D, end to end: Phases 1 and 2 are the part they share,
+Phase 3 is where C splits off. That shared part is the one I kept doing badly by hand:
+I'd ask "how do I do X?", get one confident answer, implement it, and never find out
+that there were three other ways and that mine was the wrong one for my constraints.
+Comparing real alternatives is where the learning is — that's the part I wanted turned
+into a repeatable process instead of a good day.
 
-In Case C, you use Phase 1 and then explicitly ask for the code. The skill will push
-back; tell it you're in a hurry and taking the trade-off knowingly, and review what it
-produces. In Case D, you use the whole thing as it is.
+## The rules
 
-## The two rules
-
-Everything in the skill exists to enforce two constraints:
+Everything in the skill exists to enforce three constraints:
 
 1. **It doesn't choose for you.** It will tell you "this is worth it if the project
    scales, this is a bad fit for a small team on a deadline" — context-dependent
    trade-offs, all of them. The decision stays yours, because the point is to build the
-   judgement, not to borrow it.
-2. **It doesn't write the implementation.** It names the dependency, the class, the
-   responsibility, the method signature. You write the body. Naming an annotation to
-   explain a concept is fine; a ready-to-paste block is not.
-
-It also holds the line when you push. If you say "just tell me which one" or "just write
-it", it acknowledges the time pressure, explains in one sentence why the choice and the
-writing stay yours (you're the one who will have to maintain that code), and then
-compensates by getting more granular — steps almost at pseudocode specificity, or a
-sharper read on which trade-off dominates in your case. That's a more useful compromise
-than dropping the reason the skill exists.
+   judgement, not to borrow it. This one doesn't bend, even under time pressure.
+2. **By default it doesn't write the implementation.** It names the dependency, the
+   class, the responsibility, the method signature. You write the body. Naming an
+   annotation to explain a concept is fine; a ready-to-paste block is not.
+3. **Unless you ask.** Explicitly, in so many words — then it writes the code, commented
+   where a relevant tool comes into play, and still tells you where it could break.
 
 ## How it works
 
@@ -96,27 +130,29 @@ steps, the mistakes juniors typically make with *that specific* solution, and ho
 verify it works. It knows the difference between "does B handle high traffic?" (still
 Phase 1, you're still deciding) and "I'll go with B" (Phase 2).
 
-Both phases live in the same conversation — no re-invoking needed.
+**Phase 3 — The code, if you ask for it.** Only on an explicit request. It writes the
+full implementation for the option you chose, reusing the exact tools it named in
+Phase 2 so the code matches the explanation, with comments on the parts worth
+understanding. If you skip straight here it picks the most sensible option itself and
+says which, so you know what the code is based on.
+
+All three phases live in the same conversation — no re-invoking needed.
 
 ## Installation
 
 **Claude Code** — personal (all projects):
 
 ```bash
-mkdir -p ~/.claude/skills
-cp -r skills/solution-research-dev ~/.claude/skills/solution-research-dev
+mkdir -p ~/.claude/skills/solution-research-dev
+cp SKILL.md ~/.claude/skills/solution-research-dev/SKILL.md
 ```
 
 Or project-scoped, committed with the repo:
 
 ```bash
-mkdir -p .claude/skills
-cp -r skills/solution-research-dev .claude/skills/solution-research-dev
+mkdir -p .claude/skills/solution-research-dev
+cp SKILL.md .claude/skills/solution-research-dev/SKILL.md
 ```
-
-For the Italian version, use `skills/ricerca-soluzioni-dev` instead. Don't install both:
-the two descriptions overlap and either one may trigger. Each version answers in the
-language you write in, so pick one.
 
 **Claude apps** — upload the skill folder in Settings → Capabilities → Skills, where
 skill creation is enabled for your account.
@@ -134,23 +170,23 @@ You don't invoke it. Just describe the problem the way you normally would:
 > I have to cache the results of an expensive API call in a Next.js app. What are my
 > options?
 
-Then read the options, pick a letter, and write the code.
+Then read the options, pick a letter, and either write the code or say you want it
+written.
 
 ## What it is not
 
 - Not for syntax questions with one right answer ("how do I reverse a list in Python").
   There's nothing to compare; just ask normally.
-- Not a code generator. If you want code, this skill is in your way — that's Case A, and
-  a plain detailed prompt serves you better.
+- Not a code generator you reach for first. Phase 3 exists, but it's the last step of a
+  process, not a shortcut past it. If all you want is code, that's Case A, and a plain
+  detailed prompt serves you better.
 - Not a substitute for reading the documentation. It's a way of finding out *which*
   documentation is worth your afternoon.
 
 ## Contributing
 
-Issues and PRs welcome, particularly: translations into other languages, sharper option
-formats, and cases where the skill triggers when it shouldn't (or doesn't when it
-should). If you change the behaviour, change both language versions so they stay in
-sync.
+Issues and PRs welcome, particularly: sharper option formats, and cases where the skill
+triggers when it shouldn't (or doesn't when it should).
 
 ## License
 
